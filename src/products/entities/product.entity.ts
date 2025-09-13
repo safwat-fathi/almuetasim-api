@@ -32,7 +32,7 @@ export class Product {
   price: number;
 
   @Column({ nullable: true })
-  image_url: string;
+  image_path: string;
 
   @Column({
     type: 'enum',

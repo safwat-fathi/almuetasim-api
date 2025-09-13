@@ -12,12 +12,9 @@ declare global {
       MIGRATIONS_TABLE_NAME: string;
       JWT_SECRET: string;
       JWT_REFRESH_SECRET: string;
-      CSRF_SECRET: string;
-      CLIENT_URL: string;
-      AWS_ACCESS_KEY_ID: string;
-      AWS_SECRET_ACCESS_KEY: string;
-      AWS_REGION: string;
-      AWS_BUCKET_NAME: string;
+      JWT_ACCESS_EXPIRATION: string;
+      JWT_REFRESH_EXPIRATION: string;
+      ADMIN_PASS_SEED: string;
     }
   }
 }

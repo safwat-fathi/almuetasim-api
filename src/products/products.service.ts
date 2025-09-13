@@ -115,4 +115,20 @@ export class ProductsService {
       throw new NotFoundException(`Product with ID "${id}" not found`);
     }
   }
+
+  async updateProductImage(
+    id: number,
+    imagePath: string,
+    user: User,
+  ): Promise<Product> {
+    const product = await this.findOneWithUser(id);
+    if (product.user.id !== user.id) {
+      throw new UnauthorizedException(
+        'You are not authorized to update this product',
+      );
+    }
+
+    product.image_path = imagePath;
+    return this.productRepository.save(product);
+  }
 }

@@ -1,5 +1,4 @@
 import { Exclude } from 'class-transformer';
-import { Order } from 'src/orders/entities/order.entity';
 import { Product } from 'src/products/entities/product.entity';
 import {
   BeforeInsert,
@@ -13,6 +12,13 @@ import {
   DeleteDateColumn,
 } from 'typeorm';
 import { genSalt, hash } from 'bcryptjs';
+
+export enum UserRole {
+  // CUSTOMER = 'customer',
+  // B2B = 'b2b',
+  // TECHNICIAN = 'technician',
+  ADMIN = 'admin',
+}
 
 @Entity('users')
 export class User {
@@ -29,17 +35,18 @@ export class User {
   @Column({ select: false })
   password: string;
 
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.ADMIN,
+  })
+  role: UserRole;
+
   @Column({ nullable: true })
-  bio?: string;
+  phone?: string;
 
   @Column({ nullable: true })
   profile_image?: string;
-
-  @Column({ nullable: true })
-  theme_color?: string;
-
-  @Column({ type: 'text', nullable: true })
-  refresh_token?: string | null;
 
   @CreateDateColumn()
   created_at: Date;
@@ -52,14 +59,6 @@ export class User {
 
   @OneToMany(() => Product, (product) => product.user)
   products: Product[];
-
-  // Orders placed by this user (as a buyer)
-  @OneToMany(() => Order, (order) => order.buyer)
-  placed_orders: Order[];
-
-  // Orders to be fulfilled by this user (as a seller)
-  @OneToMany(() => Order, (order) => order.seller)
-  received_orders: Order[];
 
   @BeforeInsert()
   @BeforeUpdate()

@@ -5,7 +5,6 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUrl,
 } from 'class-validator';
 import { ProductStatus } from '../entities/product.entity';
 
@@ -26,9 +25,9 @@ export class CreateProductDto {
   price: number;
 
   @ApiProperty({ required: false })
-  @IsUrl()
+  @IsString()
   @IsOptional()
-  image_url?: string;
+  image_path?: string;
 
   @ApiProperty({ enum: ProductStatus, required: false })
   @IsEnum(ProductStatus)

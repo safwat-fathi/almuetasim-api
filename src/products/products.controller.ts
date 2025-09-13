@@ -9,6 +9,8 @@ import {
   UseGuards,
   ParseIntPipe,
   Query,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -19,6 +21,7 @@ import {
   ApiTags,
   ApiOperation,
   ApiResponse,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
@@ -26,6 +29,8 @@ import { User } from 'src/users/entities/user.entity';
 import { Product } from './entities/product.entity';
 import { PaginatedProductsDto } from './dto/paginated-products.dto';
 import CONSTANTS from 'src/common/constants';
+import { LocalFile } from 'src/common/decorators/file-upload.decorator';
+import { imageFileFilter } from 'src/config/multer.config';
 
 @ApiTags('products')
 @Controller('products')
@@ -106,5 +111,36 @@ export class ProductsController {
     @GetUser() user: User,
   ): Promise<void> {
     return this.productsService.remove(id, user);
+  }
+
+  @Post(':id/upload-image')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload product image' })
+  @ApiResponse({
+    status: 200,
+    description: 'The product image has been successfully uploaded.',
+    type: Product,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  @LocalFile('image', {
+    fileFilter: imageFileFilter,
+  })
+  async uploadProductImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @GetUser() user: User,
+  ): Promise<Product> {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    return this.productsService.updateProductImage(
+      id,
+      `/uploads/${file.filename}`,
+      user,
+    );
   }
 }

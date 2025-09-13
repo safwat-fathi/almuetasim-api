@@ -1,11 +1,8 @@
-import { User } from 'src/users/entities/user.entity';
 import {
   Column,
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
-  JoinColumn,
-  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -27,15 +24,9 @@ export class Order {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // Relation to the User who placed the order (the Buyer)
-  @ManyToOne(() => User, (user) => user.placed_orders)
-  @JoinColumn({ name: 'buyer_id' })
-  buyer: User;
-
-  // Relation to the User who will fulfill the order (the Seller)
-  @ManyToOne(() => User, (user) => user.received_orders)
-  @JoinColumn({ name: 'seller_id' })
-  seller: User;
+  // @ManyToOne(() => User, (user) => user.orders)
+  // @JoinColumn({ name: 'user_id' })
+  // user: User;
 
   @Column({
     type: 'enum',

@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
+import { SessionsService } from '../sessions/sessions.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { SignUpDto } from './dto/signup.dto';
@@ -11,12 +12,12 @@ import { User } from 'src/users/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { plainToClass } from 'class-transformer';
 import { UserResponseDto } from 'src/users/dto/user-response.dto';
-import CONSTANTS from 'src/common/constants';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
+    private sessionsService: SessionsService,
     private jwtService: JwtService,
   ) {}
 
@@ -32,9 +33,15 @@ export class AuthService {
     const newUser = await this.usersService.create(signUpDto);
 
     const tokens = await this.getTokens(newUser);
-    await this.usersService.update(newUser.id, {
-      refresh_token: tokens.refreshToken,
-    });
+
+    // Store refresh token in session table
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days from now
+    await this.sessionsService.createRefreshToken(
+      newUser.id,
+      tokens.refreshToken,
+      expiresAt,
+    );
 
     const userDto = plainToClass(UserResponseDto, newUser, {
       excludeExtraneousValues: true,
@@ -62,9 +69,15 @@ export class AuthService {
     }
 
     const tokens = await this.getTokens(user);
-    await this.usersService.update(user.id, {
-      refresh_token: tokens.refreshToken,
-    });
+
+    // Store refresh token in session table
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days from now
+    await this.sessionsService.createRefreshToken(
+      user.id,
+      tokens.refreshToken,
+      expiresAt,
+    );
 
     const userDto = plainToClass(UserResponseDto, user, {
       excludeExtraneousValues: true,
@@ -77,36 +90,46 @@ export class AuthService {
   }
 
   async logout(userId: number, refreshToken: string) {
-    const user = await this.usersService.findOne(userId);
+    // Verify the refresh token exists in sessions
+    const session = await this.sessionsService.findRefreshToken(refreshToken);
 
-    if (!user || !user.refresh_token) {
+    if (!session) {
       throw new UnauthorizedException('Access Denied');
     }
 
-    if (user.refresh_token !== refreshToken) {
-      throw new UnauthorizedException('Access Denied');
-    }
-
-    await this.usersService.update(userId, {
-      refresh_token: null,
-    });
+    // Delete the session
+    await this.sessionsService.deleteRefreshToken(refreshToken);
   }
 
   async refresh(userId: number, refreshToken: string) {
-    const user = await this.usersService.findOne(userId);
+    // Verify the refresh token exists in sessions
+    const session = await this.sessionsService.findRefreshToken(refreshToken);
 
-    if (!user || !user.refresh_token) {
+    if (!session) {
       throw new UnauthorizedException('Access Denied');
     }
 
-    if (user.refresh_token !== refreshToken) {
+    // Update last used timestamp
+    await this.sessionsService.updateLastUsed(refreshToken);
+
+    // Get user
+    const user = await this.usersService.findOne(userId);
+
+    if (!user) {
       throw new UnauthorizedException('Access Denied');
     }
 
     const tokens = await this.getTokens(user);
-    await this.usersService.update(user.id, {
-      refresh_token: tokens.refreshToken,
-    });
+
+    // Update refresh token in session table
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days from now
+    await this.sessionsService.deleteRefreshToken(refreshToken);
+    await this.sessionsService.createRefreshToken(
+      user.id,
+      tokens.refreshToken,
+      expiresAt,
+    );
 
     return tokens;
   }
@@ -121,7 +144,7 @@ export class AuthService {
         },
         {
           secret: process.env.JWT_SECRET,
-          expiresIn: CONSTANTS.SESSION.ACCESS_TOKEN_EXPIRATION_TIME,
+          expiresIn: process.env.JWT_ACCESS_EXPIRATION,
         },
       ),
       this.jwtService.signAsync(
@@ -132,7 +155,7 @@ export class AuthService {
         },
         {
           secret: process.env.JWT_REFRESH_SECRET,
-          expiresIn: CONSTANTS.SESSION.REFRESH_TOKEN_EXPIRATION_TIME,
+          expiresIn: process.env.JWT_REFRESH_EXPIRATION,
         },
       ),
     ]);

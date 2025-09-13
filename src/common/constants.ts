@@ -4,10 +4,13 @@ const CONSTANTS = {
     JWT: 'jwt',
     JWT_REFRESH: 'jwt-refresh',
   },
-  SESSION: {
-    ACCESS_TOKEN_EXPIRATION_TIME: '15m', // 15 minutes
-    REFRESH_TOKEN_EXPIRATION_TIME: '7d', // 7 days
+  RATE_LIMIT: {
+    WINDOW_MS: 60 * 1000, // 1 minute
+    MAX: 10,
   },
-};
+  FILE: {
+    MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  },
+} as const;
 
 export default CONSTANTS;
